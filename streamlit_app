@@ -1,0 +1,112 @@
+# streamlit_app.py
+"""
+Aplicación Streamlit para el Análisis Técnico Detallado de Soluciones de Almacenamiento.
+Cubre: Escenario, Criterios, Comparación, Gráficos, Simulaciones, Diagramas, Riesgos y Conclusiones.
+"""
+
+import streamlit as st
+import pandas as pd
+import numpy as np
+import matplotlib.pyplot as plt
+from math import pi
+
+st.set_page_config(page_title="Análisis Técnico - Almacenamiento", layout="wide")
+
+# ------------------- Datos de ejemplo -------------------
+def load_sample_data():
+    return pd.DataFrame({
+        "Tecnología": ["HDD", "SSD", "Cintas", "Nube"],
+        "Vel_Lectura_MBps": [150, 500, 100, np.nan],
+        "Vel_Escritura_MBps": [150, 500, 80, np.nan],
+        "Capacidad_TB": [10, 4, 100, np.inf],
+        "Costo_GB_USD": [0.03, 0.10, 0.01, 0.02],
+        "MTBF_horas": [1_500_000, 2_000_000, 5_000_000, 99_999_999],
+        "Consumo_W": [8, 4, 2, 0],
+        "Seguridad_1_5": [3, 4, 3, 5],
+        "Escalabilidad_1_5": [4, 3, 2, 5]
+    })
+
+# ------------------- Escenario -------------------
+st.title("📊 Análisis Técnico de Soluciones de Almacenamiento")
+empresa = st.text_input("Nombre de la empresa:", "Empresa XYZ")
+volumen = st.number_input("Volumen actual de datos (TB):", 1.0, 1000.0, 10.0)
+crecimiento = st.slider("Crecimiento anual esperado (%)", 0, 200, 50)
+
+st.write(f"**Escenario:** {empresa} gestiona actualmente {volumen} TB de datos con un crecimiento esperado del {crecimiento}% anual.")
+
+# ------------------- Tabla comparativa -------------------
+st.header("📋 Comparación de Tecnologías")
+df = load_sample_data()
+df_edit = st.experimental_data_editor(df, num_rows="dynamic", use_container_width=True)
+
+# Cálculo de costos anuales
+df_edit["Costo_Anual_GB"] = df_edit.apply(
+    lambda x: x["Costo_GB_USD"]*12 if x["Tecnología"]=="Nube" else x["Costo_GB_USD"], axis=1
+)
+df_edit["Costo_Total_Anual"] = df_edit["Costo_Anual_GB"] * (volumen*1000)
+st.dataframe(df_edit)
+
+# ------------------- Gráficos -------------------
+st.header("📈 Análisis Gráfico Comparativo")
+
+# Gráfico de velocidad
+fig, ax = plt.subplots(figsize=(6,4))
+x = np.arange(len(df_edit))
+ax.bar(x-0.2, df_edit["Vel_Lectura_MBps"].fillna(0), width=0.4, label="Lectura")
+ax.bar(x+0.2, df_edit["Vel_Escritura_MBps"].fillna(0), width=0.4, label="Escritura")
+ax.set_xticks(x)
+ax.set_xticklabels(df_edit["Tecnología"])
+ax.set_ylabel("MB/s")
+ax.legend()
+st.pyplot(fig)
+
+# Radar: Fiabilidad, Seguridad, Escalabilidad
+labels = ["Fiabilidad","Escalabilidad","Seguridad"]
+st.subheader("Radar comparativo")
+fig2, ax2 = plt.subplots(figsize=(5,5), subplot_kw=dict(polar=True))
+angles = [n/3*2*pi for n in range(3)]
+angles += angles[:1]
+for i, row in df_edit.iterrows():
+    valores = [
+        min(5, row["MTBF_horas"]/2_000_000*5),
+        row["Escalabilidad_1_5"],
+        row["Seguridad_1_5"]
+    ]
+    ax2.plot(angles, valores+valores[:1], label=row["Tecnología"])
+    ax2.fill(angles, valores+valores[:1], alpha=0.1)
+ax2.set_xticks(angles[:-1])
+ax2.set_xticklabels(labels)
+st.pyplot(fig2)
+
+# ------------------- Simulación -------------------
+st.header("⚙️ Simulación de Rendimiento")
+años = st.slider("Años a simular", 1, 5, 2)
+datos = [volumen*1_000_000 * (1+crecimiento/100)**y for y in range(años+1)]
+speeds = {"HDD":150,"SSD":500}
+fig3, ax3 = plt.subplots(figsize=(6,4))
+for t, v in speeds.items():
+    tiempos = [d/v for d in datos]
+    ax3.plot(range(años+1), tiempos, marker="o", label=t)
+ax3.set_xticks(range(años+1))
+ax3.set_xticklabels([f"Año {i}" for i in range(años+1)])
+ax3.set_ylabel("Tiempo relativo (s)")
+ax3.legend()
+st.pyplot(fig3)
+
+# ------------------- Riesgos -------------------
+st.header("⚠️ Riesgos y Oportunidades")
+st.write("""
+**Riesgos:**  
+- Costo inicial elevado (SSD).  
+- Dependencia de conectividad (Nube).  
+- Durabilidad limitada (SSD).  
+
+**Oportunidades:**  
+- Escalabilidad de la Nube.  
+- Mejora de rendimiento con SSD.  
+- Reducción de costes operativos combinando tecnologías.
+""")
+
+# ------------------- Conclusiones -------------------
+st.header("✅ Conclusiones Técnicas")
+st.success("Se recomienda una solución híbrida: SSD para aplicaciones críticas y almacenamiento en la nube para respaldo y escalabilidad.")
